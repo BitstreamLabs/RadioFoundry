@@ -141,7 +141,7 @@ broadcasts) through the identifier table. A channel with no inbound frequency is
 
 ## 4. The follower
 
-`p25_follow_t`, 452 bytes on an Arm target (332 without the transmit side's state, which is always compiled in with
+`p25_follow_t`, 460 bytes on an Arm target (340 without the transmit side's state, which is always compiled in with
 the switch), placed by the caller. Flash: about 3.7 KB for the follower and the
 messages, 0.8 KB for the receive side's trunking units (the trellis decoder among them). Pure: time comes in as a
 millisecond tick on every call, retunes go out through `p25_follow_hooks_t.tune`. All calls come from one task (or
@@ -192,6 +192,12 @@ The view (`p25_follow_view`, a consistent copy for another task): state, the con
 WACN, system, RFSS, site, the call followed (group, source, target, encrypted), identifiers known, control channels
 learned, the last grant refused and why, and counters: blocks, CRC failures, manufacturer's blocks, packets, grants,
 follows, refusals by reason, wrong system, hunts, control channel losses, voice losses, and blocks by opcode.
+
+Bit error rate: for each block whose CRC holds (a TSDU's blocks, a packet's header), the follower adds the bits the
+trellis decoder corrected (`p25_block_get`'s return: received bits that disagree with the code word chosen) to
+`view.err_bits`, and the block's 196 coded bits (`P25_BLOCK_CODED_BITS`) to `view.coded_bits`. A block whose CRC fails
+adds to neither: how many of its bits were wrong is not known. The rate is the one over the other; the radio core
+takes it over a second (7).
 
 ## 5. The transmit side
 
@@ -287,7 +293,14 @@ first one's flag, so the two are never inside together. The provider's task then
 Memory: the follower, its configuration and its control channel and identifier tables sit beside the engine in the
 memory the board places for P25 (the vocoder's, where it lends it); the system read from the codeplug shares the voice
 path's part, which it needs only until the voice path starts. The radio task keeps a copy of the follower's view for
-other tasks (about 150 bytes).
+other tasks (about 160 bytes). The site panel adds 16 bytes to the radio view's `p25` part and the bit error rate's
+one-second state (18 bytes) to the radio core.
+
+The site panel: the radio core copies the follower's control channel and site into the radio view (`p25`: `cc_hz`
+the channel tried or held, `cc_nac`, `wacn`, `sysid`, `rfss`, `site`, all ones until heard) at every tick, and its bit
+error rate (`p25.ber`, in 0.01 %) once a second, from the change in `err_bits` and `coded_bits` over that second. The
+rate is not measured (`RADIO_P25_BER_NONE`) off the control channel, in a second with no block whose CRC held, and in
+one where more blocks failed than held, since only the blocks that held say how many bits were wrong.
 
 What the user sees: `p25.trunk` in the radio view (`RADIO_P25_TRUNK_*`: finding the system, on the control channel,
 following a call). Home's talk line says "Finding system", "Control channel" or "Following TG 201" (the grant's group
@@ -295,6 +308,24 @@ until the call's own fields are in) instead of what PTT calls. With the transmit
 registered, "TG 201" when PTT can ask, "Wait" or "Queued" while a request waits, "Denied" or "Reg. denied" after a
 refusal. The debug link's `p25_trunk` section has the follower's
 view and the retune counters ([debuglink.md](debuglink.md) 3.7).
+
+Home's activity area shows the site panel while the follower hunts or holds the control channel (not on a voice
+channel, not in dual watch, which never takes a trunked channel), when Settings > Display > P25 site info is on (the
+default; `settings_t.cp_flags` bit `SETTINGS_CP_P25_SITE_OFF`, [settings-store.md](settings-store.md)). One line each,
+label then value, `--` (dim) for a value not known:
+
+| Line | Value |
+|---|---|
+| Freq | `cc_hz` in MHz: the candidate while hunting |
+| RSSI | the radio view's level, dBm |
+| NAC | `cc_nac`, `0x` and three hex digits; held only |
+| System | `wacn` / `sysid`, `0x` and five and three hex digits; held only |
+| Site | `rfss`-`site`, decimal; held only |
+| BER | `p25.ber`: one decimal below 10 %, whole percent above |
+
+An activity area of fewer than six lines drops the NAC, then puts the system and the site on one line without a
+label, then drops BER, the frequency and the level, in that order. `uiFlowTest` checks the panel on every display
+class.
 
 Not used yet: the fallback channel, an RX group list (`groups`), the system's `roam_dbm`.
 

@@ -1939,6 +1939,160 @@ static void air_call_line(const air_call_t *c, const font_t *f, int y)
 }
 #endif
 
+#if CONFIG_P25_TRUNK
+// --- P25 site panel (docs/spec/p25-trunking.md 7): a trunked channel's control channel, while the follower hunts
+// for it or holds it ---
+static bool p25_site_shown(const radio_view_t *v, const ui_state_t *s)
+{
+#if CONFIG_DUAL_WATCH
+	if (s->dual.on)
+		return false;	// (dual watch never takes a trunked channel; its Home has no activity area anyway)
+#endif
+	return s->p25_site && v->ch.mode == RADIO_MODE_P25 && v->ch.kind == CODEPLUG_KIND_P25_TRUNK &&
+	       (v->p25.trunk == RADIO_P25_TRUNK_HUNT || v->p25.trunk == RADIO_P25_TRUNK_CONTROL);
+}
+
+// The panel's rows, and the ones a shorter activity area keeps: the NAC goes first, then the system and the site
+// share a row, then BER, the frequency and the level go
+enum { P25S_FREQ, P25S_RSSI, P25S_NAC, P25S_SYS, P25S_SITE, P25S_BER, P25S_SYS_SITE };
+static const uint8_t p25s_rows[][6] = {
+	{ P25S_SYS_SITE },
+	{ P25S_RSSI, P25S_SYS_SITE },
+	{ P25S_FREQ, P25S_RSSI, P25S_SYS_SITE },
+	{ P25S_FREQ, P25S_RSSI, P25S_SYS_SITE, P25S_BER },
+	{ P25S_FREQ, P25S_RSSI, P25S_SYS, P25S_SITE, P25S_BER },
+	{ P25S_FREQ, P25S_RSSI, P25S_NAC, P25S_SYS, P25S_SITE, P25S_BER },
+};
+
+// "--" for a value not known (yet): the callers draw it dim. True when the value was written
+static bool sb_p25_none(sbuf_t *b, bool known)
+{
+	if (!known)
+		sb_str(b, "--");
+	return known;
+}
+
+static bool sb_p25_hex(sbuf_t *b, uint32_t v, bool known, int digits)
+{
+	if (!sb_p25_none(b, known))
+		return false;
+	sb_str(b, "0x");
+	sb_hex(b, v, digits);
+	return true;
+}
+
+// The system and the site as values, while the control channel is held; "--" for what isn't heard yet (the RFSS
+// status broadcast names the system without the WACN)
+static bool sb_p25_sys(sbuf_t *b, const radio_p25_view_t *p, bool held)
+{
+	bool known = sb_p25_hex(b, p->wacn, held && p->wacn != UINT32_MAX, 5);
+	sb_str(b, " / ");
+	return sb_p25_hex(b, p->sysid, held && p->sysid != 0xFFFFu, 3) || known;
+}
+
+static bool sb_p25_site(sbuf_t *b, const radio_p25_view_t *p, bool held)
+{
+	if (!sb_p25_none(b, held && p->rfss != 0xFFu && p->site != 0xFFu))
+		return false;
+	sb_u32(b, p->rfss, 1);
+	sb_chr(b, '-');
+	sb_u32(b, p->site, 1);
+	return true;
+}
+
+static void draw_p25_site(const radio_view_t *v, int y)
+{
+	const ui_layout_t *L = &ui_layout;
+	const font_t *f = L->small;
+	const radio_p25_view_t *p = &v->p25;
+	bool held = p->trunk == RADIO_P25_TRUNK_CONTROL;
+	int w = gfx_width();
+	int n = L->activity_h / f->h;
+	if (n <= 0)
+		return;
+	if (n > (int)(sizeof p25s_rows / sizeof p25s_rows[0]))
+		n = (int)(sizeof p25s_rows / sizeof p25s_rows[0]);
+	const uint8_t *rows = p25s_rows[n - 1];
+	const char *labels[] = {
+		[P25S_FREQ] = TR(HOME_LABEL_P25T_FREQ, "Freq:"),
+		[P25S_RSSI] = TR(HOME_LABEL_P25T_RSSI, "RSSI:"),
+		[P25S_NAC] = TR(HOME_LABEL_P25T_NAC, "NAC:"),
+		[P25S_SYS] = TR(HOME_LABEL_P25T_SYSTEM, "System:"),
+		[P25S_SITE] = TR(HOME_LABEL_P25T_SITE, "Site:"),
+		[P25S_BER] = TR(HOME_LABEL_P25T_BER, "BER:"),
+		[P25S_SYS_SITE] = NULL,	// values alone: a row that holds both has no room for a label
+	};
+	// The values start in one column, after the widest label shown
+	int vx = 0;
+	for (int i = 0; i < n; i++)
+		if (labels[rows[i]] != NULL) {
+			int lw = gfx_text_width(f, labels[rows[i]]) + f->w;
+			if (lw > vx)
+				vx = lw;
+		}
+	if (vx > w / 2)
+		vx = w / 2;
+	char buf[32], fit[32];
+	sbuf_t b;
+	for (int i = 0; i < n; i++, y += f->h) {
+		bool known;
+		sb_init(&b, buf, sizeof buf);
+		switch (rows[i]) {
+		case P25S_FREQ:
+			// The candidate while hunting, the control channel held after
+			if ((known = sb_p25_none(&b, p->cc_hz != 0))) {
+				sb_freq(&b, p->cc_hz);
+				sb_str(&b, " MHz");
+			}
+			break;
+		case P25S_RSSI:
+			if ((known = sb_p25_none(&b, v->rssi_dbm != 0))) {
+				sb_i32(&b, v->rssi_dbm);
+				sb_str(&b, " dBm");
+			}
+			break;
+		case P25S_NAC:
+			known = sb_p25_hex(&b, p->cc_nac, held, 3);
+			break;
+		case P25S_SYS:
+			known = sb_p25_sys(&b, p, held);
+			break;
+		case P25S_SITE:
+			known = sb_p25_site(&b, p, held);
+			break;
+		case P25S_BER:
+			if (!(known = sb_p25_none(&b, held && p->ber != RADIO_P25_BER_NONE))) {
+				break;
+			} else if (p->ber < 995u) {
+				// One decimal below 10 %, whole percent above
+				uint32_t t = (p->ber + 5u) / 10u;
+				sb_u32(&b, t / 10u, 1);
+				sb_chr(&b, '.');
+				sb_u32(&b, t % 10u, 1);
+			} else {
+				sb_u32(&b, (p->ber + 50u) / 100u, 1);
+			}
+			sb_chr(&b, '%');
+			break;
+		default:	// P25S_SYS_SITE
+			known = sb_p25_sys(&b, p, held);
+			sb_chr(&b, ' ');
+			known = sb_p25_site(&b, p, held) || known;
+			break;
+		}
+		int x = 0;
+		const char *label = labels[rows[i]];
+		if (label != NULL) {
+			gfx_text_fit(f, label, vx, fit, sizeof fit);
+			gfx_text(f, 0, y, fit, ui_col.dim);
+			x = vx;
+		}
+		gfx_text_fit(f, buf, w - x, fit, sizeof fit);
+		gfx_text(f, x, y, fit, known ? ui_col.fg : ui_col.dim);
+	}
+}
+#endif
+
 static void draw_activity(const radio_view_t *v, const ui_state_t *s)
 {
 	const ui_layout_t *L = &ui_layout;
@@ -2042,6 +2196,12 @@ static void draw_activity(const radio_view_t *v, const ui_state_t *s)
 #if CONFIG_DMR
 		if (v->ch.mode == RADIO_MODE_DMR && v->dmr.active) {
 			draw_last_heard(v, s, y);	// hear all shows as "All" in the chips and in the hint
+			break;
+		}
+#endif
+#if CONFIG_P25_TRUNK
+		if (p25_site_shown(v, s)) {
+			draw_p25_site(v, y);
 			break;
 		}
 #endif

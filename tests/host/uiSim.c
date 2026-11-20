@@ -53,6 +53,11 @@ static const struct { const char *name, *script; } gallery[] = {
 	{ "home_locked", "long:quick 5" },
 	{ "home_usb_ip", "usbnet:on" },
 	{ "home_usb_ip_up", "usbnet:up" },
+#if CONFIG_P25_TRUNK
+	// A P25 trunked channel's site panel (Settings > Display > P25 site info): on the control channel, and hunting
+	{ "home_p25_site", "p25 dlmode:p25 p25t:2 p25site:BEE00,2F3,1,7,80" },
+	{ "home_p25_site_hunt", "p25 dlmode:p25 p25t:1" },
+#endif
 	{ "rx_group", "rx:9991234,91,g,Q1ABC_Joe_-_Boston,_MA" },
 	{ "rx_private", "rx:9995678,0,p" },
 	{ "tx", "pttdown" },

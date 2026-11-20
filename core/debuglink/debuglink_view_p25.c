@@ -98,6 +98,10 @@ __attribute__((noinline)) void debuglink_view_p25_trunk(dl_text_t *t)
 		f->idens, f->learned, f->refused, f->refused_tg, f->fallback);
 	dl_text(t, "p25t.blocks=%u\np25t.crc_fail=%u\np25t.mfr=%u\np25t.mbt=%u\np25t.mbt_op=%u\np25t.pdu_other=%u\n",
 		(unsigned)f->blocks, (unsigned)f->crc_fail, f->mfr, f->mbt, f->mbt_op, f->pdu_other);
+	// The control channel's bit error rate: the bits corrected in blocks whose CRC held, their coded bits, and the
+	// last second's rate in 0.01 % (65535 not measured: off the control channel, or more blocks failed than held)
+	dl_text(t, "p25t.err_bits=%u\np25t.coded_bits=%u\np25t.ber=%u\n", (unsigned)f->err_bits,
+		(unsigned)f->coded_bits, tv.ber);
 	dl_text(t, "p25t.grants=%u\np25t.follows=%u\np25t.enc_skip=%u\np25t.tdma=%u\np25t.no_iden=%u\n", f->grants,
 		f->follows, f->enc_skip, f->tdma, f->no_iden);
 	dl_text(t, "p25t.wrong_sys=%u\np25t.hunts=%u\np25t.cc_lost=%u\np25t.voice_lost=%u\np25t.wrong_call=%u\n",

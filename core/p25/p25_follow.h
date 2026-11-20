@@ -154,6 +154,9 @@ typedef struct {
 	uint8_t learned;	// control channels learned
 	uint8_t mbt_op;		// the last multi-block trunking opcode
 	uint32_t blocks, crc_fail;
+	// The bits the trellis decoder corrected in the blocks whose CRC held, and the coded bits of those blocks
+	// (P25_BLOCK_CODED_BITS each): the control channel's bit error rate is the one over the other
+	uint32_t err_bits, coded_bits;
 	uint16_t mfr, mbt, pdu_other, grants, follows, enc_skip, tdma, no_iden, wrong_sys, hunts, cc_lost, voice_lost,
 		 wrong_call;
 	uint8_t op[P25_OPCODES];	// blocks of the standard's table by opcode (saturating at 255)

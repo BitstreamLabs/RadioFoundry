@@ -31,7 +31,11 @@
 //                       (both not played); p25rxend ends it
 //   chkind:<n>,p25|nxdn stored channel n is a P25 or NXDN channel (CONFIG_P25 / CONFIG_NXDN builds)
 //   p25t:<state>[,<tg>] the channel on view is a trunked P25 one (CONFIG_P25_TRUNK builds), its follower in state
-//                       1 finding the system, 2 on the control channel, 3 following talk group tg
+//                       1 finding the system, 2 on the control channel, 3 following talk group tg; the site not
+//                       heard yet (all ones), the candidate on 851.0125 MHz, NAC 293
+//   p25site:<wacn>,<sysid>,<rfss>,<site>[,<ber>]   the control channel names its site (WACN and system ID in hex,
+//                       RFSS and site in decimal); ber in 0.01 % (none: not measured), the level -87 dBm
+//   p25siteinfo:on|off  Settings > Display > P25 site info
 //   rx:<src>,<dst>,g|p[,name]   a DMR call starts (g = group, p = private to us); rxend ends it
 //   call:<src>,<dst>,g|p        a 2 s call, then 1 s of quiet
 //   msg:<src>,<text>    a text message arrives (_ = space); alert:<src>; emergency:<src>; privcall:<src>
@@ -2460,6 +2464,7 @@ void sim_reset(const sim_geom_t *g, sim_map_t map)
 	ui_svc_setting_set(UI_SET_THEME, 0);
 	ui_svc_setting_set(UI_SET_ACCENT, 0);
 	ui_svc_setting_set(UI_SET_STRIP, 1);
+	ui_svc_setting_set(UI_SET_P25_SITE_INFO, 1);
 	ui_svc_setting_set(UI_SET_ALIAS_SHOW, 1);
 	ui_svc_setting_set(UI_SET_MESSAGE_TONE, 1);
 	ui_svc_setting_set(UI_SET_MSG_FORMAT, 2);
@@ -2746,6 +2751,7 @@ static bool check(const char *kv, char *err, size_t len)
 	else if (strcmp(key, "aprs_smart") == 0) snprintf(got, sizeof got, "%u", aprs_sim.cfg.smart);
 	else if (strcmp(key, "aprs_via") == 0) snprintf(got, sizeof got, "%u", aprs_sim.cfg.via);
 	else if (strcmp(key, "pos_source") == 0) snprintf(got, sizeof got, "%d", (int)ui_svc_setting_get(UI_SET_POS_SOURCE));
+	else if (strcmp(key, "p25site") == 0) snprintf(got, sizeof got, "%d", (int)ui_svc_setting_get(UI_SET_P25_SITE_INFO));
 	else if (strcmp(key, "aprs_power") == 0) snprintf(got, sizeof got, "%u", aprs_sim.cfg.power);
 	else if (strcmp(key, "aprs_path") == 0) snprintf(got, sizeof got, "%u", aprs_sim.cfg.path);
 	else if (strcmp(key, "aprs_ssid") == 0) snprintf(got, sizeof got, "%u", aprs_sim.cfg.ssid);
@@ -3142,6 +3148,40 @@ static bool run_token(char *t, char *err, size_t len)
 		view.p25.flags = RADIO_P25_ON;
 		view.p25.trunk = (uint8_t)st;
 		view.p25.dst = tg;
+		view.p25.cc_hz = 851012500u;
+		view.p25.cc_nac = 0x293;
+		view.p25.wacn = UINT32_MAX;
+		view.p25.sysid = 0xFFFFu;
+		view.p25.rfss = view.p25.site = 0xFFu;
+		view.p25.ber = RADIO_P25_BER_NONE;
+		changed();
+		advance(100);
+		return true;
+	}
+	if (strcmp(t, "p25site") == 0) {
+		unsigned wacn = 0, sysid = 0, rfss = 0, site = 0, ber = RADIO_P25_BER_NONE;
+		if (arg == NULL || sscanf(arg, "%x,%x,%u,%u,%u", &wacn, &sysid, &rfss, &site, &ber) < 4 ||
+		    wacn > 0xFFFFFu || sysid > 0xFFFu || rfss > 0xFEu || site > 0xFEu || ber > RADIO_P25_BER_NONE) {
+			snprintf(err, len, "bad %s", t);
+			return false;
+		}
+		view.p25.wacn = wacn;
+		view.p25.sysid = (uint16_t)sysid;
+		view.p25.rfss = (uint8_t)rfss;
+		view.p25.site = (uint8_t)site;
+		view.p25.ber = (uint16_t)ber;
+		view.rssi_dbm = -87;
+		changed();
+		advance(100);
+		return true;
+	}
+	if (strcmp(t, "p25siteinfo") == 0) {
+		if (arg == NULL || (strcmp(arg, "on") != 0 && strcmp(arg, "off") != 0)) {
+			snprintf(err, len, "bad %s", t);
+			return false;
+		}
+		ui_svc_setting_set(UI_SET_P25_SITE_INFO, strcmp(arg, "on") == 0);
+		ui_apply_setting(UI_SET_P25_SITE_INFO, strcmp(arg, "on") == 0);
 		changed();
 		advance(100);
 		return true;

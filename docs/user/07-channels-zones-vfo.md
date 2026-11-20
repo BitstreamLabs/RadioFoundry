@@ -367,6 +367,27 @@ on a computer ([P25 and NXDN in the editor](04-programming.md#p25-and-nxdn)). A 
 - Scan skips these channels and dual watch doesn't take them: a trunked channel follows its system instead.
 - This has run against a test control channel only, not yet on a working system.
 
+#### P25 site panel
+
+While the radio finds or holds the control channel, the lower part of Home shows what it hears there. Turn it off in
+Settings > Display > **P25 site info**.
+
+<img src="../ux/screens/240x320/home_p25_site.png" width="200" alt="Home on a P25 control channel with the site panel">
+
+| Line | Shows |
+|---|---|
+| Freq | The control channel the radio holds, or the one it is trying while it finds the system |
+| RSSI | The signal level in dBm |
+| NAC | The control channel's network access code, in hex |
+| System | The WACN and the system ID, in hex: `0xBEE00 / 0x2F3` |
+| Site | The RFSS and the site number: `1-7` |
+| BER | The control channel's bit error rate over the last second: the share of bits the radio had to correct |
+
+- `--` is a value not heard yet. While the radio finds the system, only the frequency and the level show.
+- BER counts only the messages that arrived intact. When more than half of them failed in the last second, it shows
+  `--`: the real rate is then too high to measure.
+- Smaller screens show fewer lines: the NAC goes first, then the system and the site share a line.
+
 ### NXDN in the VFO
 
 On a radio that runs NXDN, NXDN is one of the VFO's modes, after P25 ("VFO: NXDN"). It

@@ -265,6 +265,7 @@ typedef struct {
 // 2); app.c keeps it equal to codeplug_acceptance(), which a codeplug written by a CPS or TFTP drops
 #define SETTINGS_CP_ACCEPTED		0x01u
 #define SETTINGS_CP_RX_EXT		0x02u	// receive past the band table is on (not about the codeplug: the free bit here)
+#define SETTINGS_CP_P25_SITE_OFF	0x04u	// Home's P25 site panel hidden (0, an older record: shown; the free bit here)
 #define SETTINGS_T3_STUN		0x80u	// t3_stun: a stun is kept (bits 0-6 say on which system)
 #define SETTINGS_T3_KILLED		0x01u	// t3_kill: killed
 

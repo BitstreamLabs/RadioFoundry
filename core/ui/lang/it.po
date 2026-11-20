@@ -3798,6 +3798,11 @@ msgid "Hint row"
 msgstr "Riga suggerim."
 
 #: core/ui/ui_menus.c
+msgctxt "SET_LABEL_P25_SITE_INFO"
+msgid "P25 site info"
+msgstr "Info sito P25"
+
+#: core/ui/ui_menus.c
 msgctxt "SET_LABEL_LANGUAGE"
 msgid "Language"
 msgstr "Lingua/Language"
@@ -4193,6 +4198,11 @@ msgid "This radio has no vibration motor"
 msgstr "Questa radio non ha motore vibrazione"
 
 #: core/ui/ui_menus.c
+msgctxt "WHY_NOT_ON_THIS_RADIO"
+msgid "Not on this radio"
+msgstr "Non su questa radio"
+
+#: core/ui/ui_menus.c
 msgctxt "SET_WHY_COLOR_SCREENS_ONLY"
 msgid "Colors are for color screens"
 msgstr "I colori sono per schermi a colori"
@@ -4211,11 +4221,6 @@ msgstr "L'AGC mic imposta il livello"
 msgctxt "WHY_NOISE_REDUCTION_NOT_IN_BUILD"
 msgid "Noise reduction: not in this build"
 msgstr "Riduz. rumore: non in questa build"
-
-#: core/ui/ui_menus.c
-msgctxt "WHY_NOT_ON_THIS_RADIO"
-msgid "Not on this radio"
-msgstr "Non su questa radio"
 
 #: core/ui/ui_menus.c
 msgctxt "WHY_MIC_AGC_NOT_IN_BUILD"
@@ -4861,6 +4866,36 @@ msgstr "Altro TG: non riprodotto"
 msgctxt "CALL_HINT_MON_DMON"
 msgid "MON: digital monitor"
 msgstr "MON: monitor digitale"
+
+#: core/ui/ui_screens.c
+msgctxt "HOME_LABEL_P25T_FREQ"
+msgid "Freq:"
+msgstr "Freq.:"
+
+#: core/ui/ui_screens.c
+msgctxt "HOME_LABEL_P25T_RSSI"
+msgid "RSSI:"
+msgstr "RSSI:"
+
+#: core/ui/ui_screens.c
+msgctxt "HOME_LABEL_P25T_NAC"
+msgid "NAC:"
+msgstr "NAC:"
+
+#: core/ui/ui_screens.c
+msgctxt "HOME_LABEL_P25T_SYSTEM"
+msgid "System:"
+msgstr "Sistema:"
+
+#: core/ui/ui_screens.c
+msgctxt "HOME_LABEL_P25T_SITE"
+msgid "Site:"
+msgstr "Sito:"
+
+#: core/ui/ui_screens.c
+msgctxt "HOME_LABEL_P25T_BER"
+msgid "BER:"
+msgstr "BER:"
 
 #: core/ui/ui_screens.c
 msgctxt "ACTIVITY_STATE_SQUELCH_OPEN"

@@ -112,6 +112,7 @@ typedef struct {
 	uint8_t usb_net;	// UI_USB_NET_*: the status strip's USB network word and link arrows
 	bool hints;		// the hint row is shown (Settings > Display)
 	bool large_text;	// Home shows only the channel and the talk target (Settings > Display)
+	bool p25_site;		// Home shows the P25 site panel on a trunked control channel (Settings > Display)
 	bool privacy;		// the next DMR transmission is encrypted
 	bool hear_all;		// hear all latched (quick tile 5 on DMR); follows the radio view where the radio has it
 	// Here, in the byte before auto_lock_s that was padding: the radio with the least RAM has none to spare in its

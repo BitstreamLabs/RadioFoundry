@@ -4439,6 +4439,16 @@ static void test_ui_glue(void)
 	settings_read(&sv);
 	CHECK(sv.ui_flags == (SETTINGS_UI_LARGE_TEXT | SETTINGS_UI_MESSAGE_TONE | SETTINGS_UI_ALIAS | SETTINGS_UI_HEAR_ALL));
 	CHECK(sv.theme == 2 && sv.updown_home == 1 && sv.auto_off_min == 30 && sv.low_batt_pct == 20);
+#if CONFIG_P25_TRUNK
+	// P25 site info: on by default, kept as a "hidden" bit of cp_flags so records saved before it show the panel
+	CHECK(ui_svc_setting_get(UI_SET_P25_SITE_INFO) == 1 && (sv.cp_flags & SETTINGS_CP_P25_SITE_OFF) == 0);
+	CHECK(ui_svc_setting_set(UI_SET_P25_SITE_INFO, 0) && ui_svc_setting_get(UI_SET_P25_SITE_INFO) == 0);
+	settings_read(&sv);
+	CHECK((sv.cp_flags & SETTINGS_CP_P25_SITE_OFF) != 0);
+	CHECK(ui_svc_setting_set(UI_SET_P25_SITE_INFO, 1) && ui_svc_setting_get(UI_SET_P25_SITE_INFO) == 1);
+	settings_read(&sv);
+	CHECK((sv.cp_flags & SETTINGS_CP_P25_SITE_OFF) == 0);
+#endif
 	// Vibrate: on by default, kept as an "off" bit so records saved before it keep it on
 	CHECK(ui_svc_setting_get(UI_SET_VIBRATE) == 1);
 	CHECK(ui_svc_setting_set(UI_SET_VIBRATE, 0) && ui_svc_setting_get(UI_SET_VIBRATE) == 0);
@@ -7430,6 +7440,15 @@ static void test_p25_trunk(void)
 	CHECK(strstr(buf, "p25t.built=1\np25t.on=1\np25t.state=2\np25t.cc=0\n") != NULL);
 	CHECK(strstr(buf, "p25t.nac=659\np25t.wacn=781824\np25t.sysid=755\np25t.rfss=1\np25t.site=7\n") != NULL);
 	CHECK(strstr(buf, "p25t.blocks=0\n") == NULL && strstr(buf, "p25t.crc_fail=0\n") != NULL);
+	// Home's site panel reads the same through the radio view: the control channel held, the site it names
+	CHECK(v->cc_hz == TS_CC1 && v->cc_nac == TS_NAC && v->wacn == TS_WACN && v->sysid == TS_SYSID && v->rfss == 1 &&
+	      v->site == 7);
+	// Clean blocks off the fake air: nothing corrected, so the bit error rate is 0 once a whole second is in
+	run(1100);
+	CHECK(v->ber == 0);
+	p25t_view_text(buf, sizeof buf);
+	CHECK(strstr(buf, "p25t.err_bits=0\n") != NULL && strstr(buf, "p25t.coded_bits=0\n") == NULL &&
+	      strstr(buf, "p25t.ber=0\n") != NULL);
 	p25_view_text(buf, sizeof buf);
 	CHECK(strstr(buf, "p25.run.rx_nac=659\n") != NULL && strstr(buf, "p25.run.unit_id=4321\n") != NULL);
 

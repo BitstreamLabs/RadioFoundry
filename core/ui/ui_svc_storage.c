@@ -254,6 +254,11 @@ static __attribute__((noinline)) int32_t setting_get_flash(uint8_t id)
 		settings_read(&st);
 		return (st.cp_flags & SETTINGS_CP_RX_EXT) != 0;
 #endif
+#if CONFIG_P25_TRUNK
+	case UI_SET_P25_SITE_INFO:
+		settings_read(&st);
+		return (st.cp_flags & SETTINGS_CP_P25_SITE_OFF) == 0;	// stored as hidden, so an older record shows it
+#endif
 	case UI_SET_HOTSPOT_AUTO:
 		settings_read(&st);
 		return st.hotspot_allowed != 0;
@@ -609,6 +614,14 @@ bool ui_svc_setting_set(uint8_t id, int32_t value)
 		settings_end(hal_millis());
 		board_rx_ext_set(value != 0);
 		radio_req_reload();	// a VFO past the table goes back in band when this goes off
+		return true;
+#endif
+#if CONFIG_P25_TRUNK
+	case UI_SET_P25_SITE_INFO:
+		st = settings_begin();
+		st->cp_flags = (uint8_t)(value != 0 ? (st->cp_flags & ~SETTINGS_CP_P25_SITE_OFF) :
+					 (st->cp_flags | SETTINGS_CP_P25_SITE_OFF));
+		settings_end(hal_millis());
 		return true;
 #endif
 	case UI_SET_HOTSPOT_AUTO:

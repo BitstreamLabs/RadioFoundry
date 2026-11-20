@@ -757,6 +757,54 @@ static void cc_unit_ss(p25_follow_t *f, uint8_t ss)
 	p25_follow_unit(f, &u, now_ms);
 }
 
+// The bit error rate the view counts (p25-trunking.md 4): the bits the trellis decoder corrected in each block whose
+// CRC held, over the coded bits of those blocks; a block whose CRC failed is counted as failed and adds neither
+static void testFollowBer(void)
+{
+	static const p25_follow_cc_t cc[] = { { .hz = HZ_CC1, .site = 3 } };
+	static p25_follow_t f;
+	static uint8_t air[P25_UNIT_BYTES_MAX];
+	p25_follow_cfg_t cfg = { .wacn = WACN, .sysid = SYSID, .nac = NAC, .unit_id = OUR_UNIT, .talk_group = 100,
+				 .ncc = 1, .cc = cc };
+	p25_rx_unit_t u = { .duid = P25_DUID_TSDU, .nac = NAC, .nsyms = 180, .air = air };
+	uint8_t b[P25_TSBK_BYTES];
+	p25_follow_view_t v;
+
+	ntunes = nfallback = 0;
+	now_ms = 1000;
+	p25_follow_begin(&f, &cfg, &fhooks, NULL, now_ms);
+	retune(&f);
+	mk_net(b, WACN, SYSID);
+	p25_unit_begin(air, 180, NAC, P25_DUID_TSDU, P25_SS_IDLE);
+	p25_block_put(air, 0, b);
+	// Clean: one block, nothing corrected
+	p25_follow_unit(&f, &u, now_ms);
+	v = view(&f);
+	CHECK(v.state == P25_FOLLOW_CONTROL && v.blocks == 1 && v.err_bits == 0 && v.coded_bits == P25_BLOCK_CODED_BITS,
+	      "clean block: %u blocks, %u of %u bits", (unsigned)v.blocks, (unsigned)v.err_bits, (unsigned)v.coded_bits);
+	// One dibit flipped to its opposite (two bits): corrected, and the two bits counted
+	{
+		uint16_t at = 112 + 2 * 40;
+
+		p25_bits_put(air, at, 2, p25_bits_get(air, at, 2) ^ 3u);
+		p25_follow_unit(&f, &u, now_ms);
+		p25_bits_put(air, at, 2, p25_bits_get(air, at, 2) ^ 3u);
+	}
+	v = view(&f);
+	CHECK(v.blocks == 2 && v.err_bits == 2 && v.coded_bits == 2 * P25_BLOCK_CODED_BITS && v.crc_fail == 0,
+	      "a dibit in error: %u blocks, %u of %u bits", (unsigned)v.blocks, (unsigned)v.err_bits,
+	      (unsigned)v.coded_bits);
+	// A block of noise: its CRC fails, the error count stays
+	for (unsigned i = 14; i < 14 + 25; i++)
+		air[i] = (uint8_t)rng();
+	p25_follow_unit(&f, &u, now_ms);
+	v = view(&f);
+	CHECK(v.crc_fail == 1 && v.blocks == 2 && v.err_bits == 2 && v.coded_bits == 2 * P25_BLOCK_CODED_BITS,
+	      "a failed block adds no bits: %u failed, %u of %u bits", (unsigned)v.crc_fail, (unsigned)v.err_bits,
+	      (unsigned)v.coded_bits);
+	p25_follow_end(&f);
+}
+
 #define HZ_CC1_IN	(HZ_CC1 - 45000000u)
 #define HZ_VA_IN	(HZ_VA - 45000000u)
 
@@ -1761,6 +1809,7 @@ int main(void)
 	testBlocks();
 	testChannels();
 	testFollowHand();
+	testFollowBer();
 	testFollowOptions();
 	testAccess();
 	testAccessEarlyAnswers();

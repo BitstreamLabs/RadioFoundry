@@ -1909,6 +1909,9 @@ void ui_app_init(void)
 					  UI_SET_UPDOWN_HOME, UI_SET_LABEL_FIRST, UI_SET_LOW_BATTERY, UI_SET_AUTO_OFF_MIN, UI_SET_THEME, UI_SET_ACCENT,
 					  UI_SET_STRIP, UI_SET_VIBRATE, UI_SET_VOLUME, UI_SET_LANGUAGE,
 					  UI_SET_KNOB_WHEN_LOCKED,
+#if CONFIG_P25_TRUNK
+					  UI_SET_P25_SITE_INFO,
+#endif
 #if CONFIG_DUAL_WATCH
 					  UI_SET_DUAL_TALK_BACK,
 #endif
@@ -1974,6 +1977,9 @@ void ui_apply_setting(uint8_t id, int32_t v)
 	case UI_SET_BRIGHTNESS: ui_st.brightness = (uint8_t)(v >= 10 && v <= 100 ? v : 100); break;
 	case UI_SET_HINTS: ui_st.hints = v != 0; break;
 	case UI_SET_LARGE_TEXT: ui_st.large_text = v != 0; break;
+#if CONFIG_P25_TRUNK
+	case UI_SET_P25_SITE_INFO: ui_st.p25_site = v != 0; break;
+#endif
 	case UI_SET_AUTO_LOCK_S: ui_st.auto_lock_s = clamp_u16(v); break;
 	case UI_SET_ALIAS_SHOW: ui_st.alias_show = v != 0; break;
 	case UI_SET_HEAR_ALL_DEFAULT:

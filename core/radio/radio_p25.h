@@ -69,7 +69,18 @@ typedef struct {
 	uint32_t src;		// the caller's unit ID, 0 not known yet
 	uint32_t dst;		// the talk group or the unit called
 	uint32_t talk;		// what PTT calls (the settings' tx_dst): a talk group, or a unit with RADIO_P25_TALK_UNIT
+#if CONFIG_P25_TRUNK
+	// A trunked channel's control channel (p25-trunking.md 7): the one tried or held, and the site it names while
+	// held (all ones until heard: wacn 0xFFFFFFFF, sysid 0xFFFF, rfss and site 0xFF)
+	uint32_t cc_hz;
+	uint32_t wacn;
+	uint16_t cc_nac;	// the NAC of the control channel held
+	uint16_t sysid;
+	uint8_t rfss, site;
+	uint16_t ber;		// its bit error rate over the last second, in 0.01 %; RADIO_P25_BER_NONE: not measured
+#endif
 } radio_p25_view_t;
+#define RADIO_P25_BER_NONE	0xFFFFu
 
 // Counters for the debug link (any task reads them; the radio task writes them while P25 runs)
 typedef struct {
@@ -97,6 +108,7 @@ typedef struct {
 	bool on;		// a trunked channel runs
 	bool tx;		// ... with the transmit side on
 	uint32_t retunes, untuned, skips, bursts, burst_refused;	// radio_p25_stats_t's trunk_*
+	uint16_t ber;		// radio_p25_view_t.ber
 	p25_follow_view_t v;
 } radio_p25_trunk_view_t;
 void radio_p25_trunk_view(radio_p25_trunk_view_t *out);

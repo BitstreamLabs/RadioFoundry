@@ -18,6 +18,7 @@
 #define P25_TSBK_BYTES		12
 #define P25_TSDU_BLOCKS_MAX	3
 #define P25_PDU_BLOCKS_MAX	8	// a packet the unit buffer holds: the header and up to 7 more
+#define P25_BLOCK_CODED_BITS	196	// a block on air: 98 dibits of the rate 1/2 trellis code
 // A unit of n blocks in symbols, status symbols included: the frame sync, NID and blocks, filled up with null bits to
 // the next status symbol (one block 180, two 288, three 360). The symbols it takes to hold block k (from 0)
 uint16_t p25_blocks_syms(uint8_t n);

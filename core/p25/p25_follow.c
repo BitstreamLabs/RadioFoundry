@@ -817,6 +817,13 @@ void p25_follow_tsbk(p25_follow_t *f, const uint8_t blk[P25_TSBK_BYTES], uint16_
 	view_end(f);
 }
 
+// A block whose CRC held: what the trellis decoder corrected in it, for the view's bit error rate
+static void ber_add(p25_follow_t *f, int errs)
+{
+	f->view.err_bits += (uint32_t)errs;
+	f->view.coded_bits += P25_BLOCK_CODED_BITS;
+}
+
 void p25_follow_unit(p25_follow_t *f, const p25_rx_unit_t *u, uint32_t now)
 {
 	uint8_t blk[P25_TSBK_BYTES];
@@ -834,11 +841,14 @@ void p25_follow_unit(p25_follow_t *f, const p25_rx_unit_t *u, uint32_t now)
 			f->acc.busy = p25_status_get(u->air, (uint16_t)(nss - 1)) == P25_SS_BUSY;
 
 		for (uint8_t k = 0; k < n && !f->tuning; k++) {
-			if (p25_block_get(u->air, k, blk) < 0) {
+			int errs = p25_block_get(u->air, k, blk);
+
+			if (errs < 0) {
 				f->view.crc_fail++;
 				continue;
 			}
 			f->view.blocks++;
+			ber_add(f, errs);
 			on_block(f, blk, u->nac, now);
 		}
 		break;
@@ -848,9 +858,14 @@ void p25_follow_unit(p25_follow_t *f, const p25_rx_unit_t *u, uint32_t now)
 
 		if (f->view.state == P25_FOLLOW_VOICE)
 			break;
-		if (p25_block_get(u->air, 0, blk) < 0) {
+		int errs = p25_block_get(u->air, 0, blk);
+
+		if (errs < 0) {
 			f->view.crc_fail++;
-		} else if (p25_mbt_parse(blk, &h)) {
+			break;
+		}
+		ber_add(f, errs);
+		if (p25_mbt_parse(blk, &h)) {
 			// Recognized and counted; its data blocks are not decoded
 			count(&f->view.mbt);
 			f->view.mbt_op = h.opcode;

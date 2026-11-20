@@ -60,6 +60,7 @@ Some settings are on the menu before the feature behind them exists, or don't ap
 | Filled status bar | On, Off | On | Fills the top status line with the highlight color (light gray with Default, white in the high-contrast theme) and draws its text black. Not on radios with a monochrome screen | Works |
 | Large text | On, Off | Off | Home shows only the status line, the channel and the talk target, large | Works |
 | Hint row | On, Off | On | The bottom line with key hints | Works |
+| P25 site info | On, Off | On | On a P25 trunked channel, while the radio finds or holds the control channel, the lower part of Home shows the control channel's frequency and signal level, its NAC, system (WACN / system ID), site (RFSS-site) and bit error rate ([P25 trunked channels](07-channels-zones-vfo.md#p25-site-panel)). On radios with P25 trunking | Works |
 | Talkgroup name first | On, Off | Off | Home's talk line reads "World TG 91" instead of "TG 91 World": on a small screen the name is what fits. A side key set to **TG name / number** switches it too. On radios with DMR | Works |
 | Language | English, Español, Italiano | English, or the Radio language picked in the web installer | The language of the menus and messages. A factory reset goes back to that default. The list shows every language RadioFoundry has; one that isn't in your firmware is dimmed. Pick it when you install with the web flasher to get it ([Installing](02-installing.md)). Names, callsigns and the standard radio abbreviations (TG, CC, VFO) stay as they are | Works |
 

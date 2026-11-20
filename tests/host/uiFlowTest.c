@@ -27,6 +27,25 @@
 #define ADV_BELOW_DIAG_N	0
 #endif
 
+// Settings > Display's P25 site info row: after Brightness, Backlight, the color rows (CONFIG_UI_COLOR), Large text,
+// Hint row and Talkgroup name first (CONFIG_DMR)
+#if CONFIG_UI_COLOR
+#define P25_SITE_ROW_COLOR	"down down down "
+#define P25_SITE_ROW_COLOR_N	3
+#else
+#define P25_SITE_ROW_COLOR	""
+#define P25_SITE_ROW_COLOR_N	0
+#endif
+#if CONFIG_DMR
+#define P25_SITE_ROW_DMR	"down "
+#define P25_SITE_ROW_DMR_N	1
+#else
+#define P25_SITE_ROW_DMR	""
+#define P25_SITE_ROW_DMR_N	0
+#endif
+#define P25_SITE_ROW_DOWNS	"down down " P25_SITE_ROW_COLOR "down down " P25_SITE_ROW_DMR
+#define P25_SITE_ROW_PRESSES	(3 + 4 + P25_SITE_ROW_COLOR_N + P25_SITE_ROW_DMR_N + 1)
+
 static int fails, flows_run;
 
 typedef struct {
@@ -90,6 +109,18 @@ static const flow_t flows[] = {
 	  0, false },
 	{ "P25 trunked home: following a call", "dlmode:p25", "p25t:3,201", "screen=home shows=Following_TG_201", 0,
 	  false },
+	// The site panel (Settings > Display > P25 site info): every display shows the system and the site, a taller one
+	// the frequency, the level, the NAC and BER too. Hunting: the candidate, its identity not heard yet
+	{ "P25 site panel: finding the system", "dlmode:p25", "p25t:1", "screen=home hides=0xBEE00 hides=1-7", 0, false },
+	{ "P25 site panel: the control channel's site", "dlmode:p25 p25t:2", "p25site:BEE00,2F3,1,7,80",
+	  "screen=home shows=0xBEE00_/_0x2F3 shows=1-7", 0, false },
+	{ "P25 site panel: following a call hides it", "dlmode:p25 p25t:2 p25site:BEE00,2F3,1,7,80", "p25t:3,201",
+	  "screen=home shows=Following_TG_201 hides=0xBEE00", 0, false },
+	{ "P25 site panel: off in Settings", "dlmode:p25 p25t:2 p25site:BEE00,2F3,1,7,80", "p25siteinfo:off",
+	  "screen=home hides=0xBEE00 shows=Control_channel p25site=0", 0, false },
+	// Picked in Settings > Display: the row after Hint row (and Talkgroup name first in a DMR build)
+	{ "P25 site info row turns the panel off", "p25", "ok 7 2 " P25_SITE_ROW_DOWNS "ok", "p25site=0",
+	  P25_SITE_ROW_PRESSES, false },
 #endif
 #if CONFIG_CHANNEL_EDIT
 	// A channel saved from P25 (New from current): P25 and its NAC, no FM or DMR-only rows, talkaround automatic

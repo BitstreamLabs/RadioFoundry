@@ -423,6 +423,9 @@ typedef enum {
 	// One step of a chain, set whole (its frequency and length in one write of the settings area): the value is
 	// UI_SIG_STEP(event, step, Hz, ms). Write only
 	UI_SET_SIG_STEP,
+	// Home's P25 site panel on a trunked channel's control channel: 1 shown (the default), 0 not (Settings > Display,
+	// CONFIG_P25_TRUNK; settings_t.cp_flags bit SETTINGS_CP_P25_SITE_OFF, stored inverted, so an older record shows it)
+	UI_SET_P25_SITE_INFO,
 	UI_SET_COUNT
 } ui_setting_t;
 

@@ -91,6 +91,13 @@ static bool trunk;			// the engine runs a trunked channel
 static radio_p25_trunk_view_t tview;	// the radio task's copy, for any task
 static uint8_t twhy;			// RADIO_P25T_WHY_* of the last PTT refused or request failed
 static bool ttx;			// the follower's transmit side is on
+// The control channel's bit error rate (radio_p25_view_t.ber): the follower's counters at the start of the second
+// being measured, and the last second's result
+#define BER_WINDOW_MS	1000u
+static struct {
+	uint32_t t0, err, bits, fail;
+	uint16_t ber;
+} ber;
 #endif
 
 void radio_p25_init(const hal_audio_t *audio)
@@ -402,6 +409,7 @@ void radio_p25_trunk_view(radio_p25_trunk_view_t *out)
 	out->tx = trunk && ttx;
 	out->bursts = stats.trunk_bursts;
 	out->burst_refused = stats.trunk_burst_refused;
+	out->ber = trunk ? ber.ber : RADIO_P25_BER_NONE;
 }
 
 bool radio_p25_trunk_tx(void)
@@ -688,6 +696,47 @@ static void settings_view(radio_p25_view_t *n)
 		n->flags |= RADIO_P25_TALK_UNIT;
 }
 
+#if CONFIG_P25_TRUNK
+// The control channel's bit error rate over the last whole second: the bits the trellis decoder corrected over the
+// coded bits of the blocks whose CRC held. A block whose CRC failed can't say how many of its bits were wrong, so when
+// more blocks failed than held the rate would read low: not measured then, nor off the control channel
+static uint16_t ber_poll(const p25_follow_view_t *f)
+{
+	uint32_t now = hal_millis();
+
+	if (f->state != P25_FOLLOW_CONTROL || f->coded_bits < ber.bits || f->crc_fail < ber.fail) {
+		// Off the control channel, or the follower started again (its counters with it): a new second from here
+		ber.t0 = now;
+		ber.err = f->err_bits;
+		ber.bits = f->coded_bits;
+		ber.fail = f->crc_fail;
+		ber.ber = RADIO_P25_BER_NONE;
+		return ber.ber;
+	}
+	if (now - ber.t0 < BER_WINDOW_MS)
+		return ber.ber;
+	uint32_t bits = f->coded_bits - ber.bits, err = f->err_bits - ber.err;
+	uint32_t held = bits / P25_BLOCK_CODED_BITS, failed = f->crc_fail - ber.fail;
+
+	if (held == 0 || failed > held) {
+		ber.ber = RADIO_P25_BER_NONE;
+	} else {
+		// A second holds a few thousand coded bits: scaled down only after a long gap between polls, so that
+		// err x 10000 stays in 32 bits
+		while (bits > UINT32_MAX / 10000u) {
+			bits >>= 1;
+			err >>= 1;
+		}
+		ber.ber = (uint16_t)((err * 10000u + bits / 2u) / bits);
+	}
+	ber.t0 = now;
+	ber.err = f->err_bits;
+	ber.bits = f->coded_bits;
+	ber.fail = f->crc_fail;
+	return ber.ber;
+}
+#endif
+
 bool radio_p25_poll(radio_p25_view_t *v)
 {
 	p25_engine_view_t ev;
@@ -698,6 +747,9 @@ bool radio_p25_poll(radio_p25_view_t *v)
 		n.flags = 0;
 		n.tx = AIR_TX_IDLE;
 		n.trunk = RADIO_P25_TRUNK_OFF;
+#if CONFIG_P25_TRUNK
+		n.ber = RADIO_P25_BER_NONE;
+#endif
 		settings_view(&n);
 		bool changed = memcmp(&n, v, sizeof(n)) != 0;
 		*v = n;
@@ -733,6 +785,13 @@ bool radio_p25_poll(radio_p25_view_t *v)
 #if CONFIG_P25_TRUNK
 	if (trunk) {
 		n.trunk = tview.v.state;
+		n.cc_hz = tview.v.cc_hz;
+		n.cc_nac = tview.v.nac;
+		n.wacn = tview.v.wacn;
+		n.sysid = tview.v.sysid;
+		n.rfss = tview.v.rfss;
+		n.site = tview.v.site;
+		n.ber = ber_poll(&tview.v);
 		if (ttx)
 			n.flags |= RADIO_P25_TRUNK_TX;
 		n.treg = tview.v.reg;

@@ -6675,6 +6675,10 @@ static const set_item_t s_display[] = {
 	TOGGLE(TRN(SET_LABEL_TG_NAME_FIRST, "Talkgroup name first"), "talk line label TG number Home",
 		UI_SET_LABEL_FIRST),
 #endif
+#if CONFIG_P25_TRUNK
+	TOGGLE(TRN(SET_LABEL_P25_SITE_INFO, "P25 site info"),
+		"trunking control channel diagnostics WACN system RFSS site NAC BER RSSI Home", UI_SET_P25_SITE_INFO),
+#endif
 	// Last, so the rows above keep their places; its search words are "language" in other languages, for a user who
 	// can't read the English
 	ACTION(TRN(SET_LABEL_LANGUAGE, "Language"), "idioma langue sprache lingua taal jezyk", SA_LANGUAGE),
@@ -7315,6 +7319,10 @@ static const char *set_why_not(const set_item_t *s)
 	case UI_SET_VIBRATE:
 		return feats() & UI_FEAT_VIBRATE ? NULL :
 			TR(SET_WHY_NO_VIBRATION_MOTOR, "This radio has no vibration motor");
+#if CONFIG_P25_TRUNK
+	case UI_SET_P25_SITE_INFO:
+		return feats() & UI_FEAT_P25 ? NULL : TR(WHY_NOT_ON_THIS_RADIO, "Not on this radio");
+#endif
 	case UI_SET_THEME:
 	case UI_SET_ACCENT:
 	case UI_SET_STRIP:
