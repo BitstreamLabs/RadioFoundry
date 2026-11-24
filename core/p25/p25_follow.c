@@ -39,6 +39,21 @@ static void count8(uint8_t *c)
 		(*c)++;
 }
 
+// A block of a manufacturer's own message: filed under its MFID and opcode while the view has a slot for the pair
+static void mfr_note(p25_follow_view_t *v, uint8_t mfid, uint8_t op)
+{
+	for (uint8_t i = 0; i < P25_MFR_KINDS; i++) {
+		if (v->mfr_n[i] == 0) {
+			v->mfr_id[i] = mfid;
+			v->mfr_op[i] = op;
+		}
+		if (v->mfr_id[i] == mfid && v->mfr_op[i] == op) {
+			count8(&v->mfr_n[i]);
+			return;
+		}
+	}
+}
+
 static void tune(p25_follow_t *f, uint32_t hz, uint8_t what, uint32_t id)
 {
 	f->tuning = true;
@@ -650,8 +665,9 @@ static void on_block(p25_follow_t *f, const uint8_t blk[P25_TSBK_BYTES], uint16_
 	}
 	if (m.kind == P25_TSBK_MFR) {
 		count(&f->view.mfr);
-	} else if (f->view.op[m.opcode] != UINT8_MAX) {
-		f->view.op[m.opcode]++;
+		mfr_note(&f->view, m.mfid, m.opcode);
+	} else {
+		count8(&f->view.op[m.opcode]);	// a protected block too: grants stays 0 while op.00 or op.02 count
 	}
 	if (st == P25_FOLLOW_HUNT) {
 		bool need = !any_wacn(c) || !any_sysid(c);

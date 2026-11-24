@@ -121,6 +121,29 @@ __attribute__((noinline)) void debuglink_view_p25_trunk(dl_text_t *t)
 #endif
 }
 
+// What the control channel sends, in a section of its own (p25_trunk fills a reply): the blocks of the standard's
+// table by opcode (`op.3a`, only the ones heard; a grant is 00, 02, 03, 04 or 06, and one that counts here while
+// p25_trunk's `grants` stays 0 was protected), and the manufacturer's by MFID and opcode (`mfr.90.02`; the first
+// P25_MFR_KINDS pairs)
+__attribute__((noinline)) void debuglink_view_p25_ops(dl_text_t *t)
+{
+#if CONFIG_P25_TRUNK
+	radio_p25_trunk_view_t tv;
+	const p25_follow_view_t *f = &tv.v;
+
+	radio_p25_trunk_view(&tv);
+	dl_text(t, "p25o.built=1\np25o.blocks=%u\np25o.mfr=%u\n", (unsigned)f->blocks, f->mfr);
+	for (unsigned i = 0; i < P25_OPCODES; i++)
+		if (f->op[i] != 0)
+			dl_text(t, "p25o.op.%02x=%u\n", i, f->op[i]);
+	for (unsigned i = 0; i < P25_MFR_KINDS; i++)
+		if (f->mfr_n[i] != 0)
+			dl_text(t, "p25o.mfr.%02x.%02x=%u\n", f->mfr_id[i], f->mfr_op[i], f->mfr_n[i]);
+#else
+	dl_text(t, "p25o.built=0\n");
+#endif
+}
+
 void debuglink_p25_reset(void)
 {
 #if CONFIG_P25

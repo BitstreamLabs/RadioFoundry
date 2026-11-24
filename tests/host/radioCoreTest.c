@@ -7449,6 +7449,13 @@ static void test_p25_trunk(void)
 	p25t_view_text(buf, sizeof buf);
 	CHECK(strstr(buf, "p25t.err_bits=0\n") != NULL && strstr(buf, "p25t.coded_bits=0\n") == NULL &&
 	      strstr(buf, "p25t.ber=0\n") != NULL);
+	// What the site sends, by opcode: the network status (3b) the fake site broadcasts
+	{
+		dl_text_t o;
+		dl_text_init(&o, buf, sizeof buf);
+		debuglink_view_p25_ops(&o);
+		CHECK(strstr(buf, "p25o.built=1") != NULL && strstr(buf, "p25o.op.3b=") != NULL);
+	}
 	p25_view_text(buf, sizeof buf);
 	CHECK(strstr(buf, "p25.run.rx_nac=659\n") != NULL && strstr(buf, "p25.run.unit_id=4321\n") != NULL);
 

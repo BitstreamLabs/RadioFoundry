@@ -141,7 +141,7 @@ broadcasts) through the identifier table. A channel with no inbound frequency is
 
 ## 4. The follower
 
-`p25_follow_t`, 460 bytes on an Arm target (340 without the transmit side's state, which is always compiled in with
+`p25_follow_t`, 468 bytes on an Arm target (348 without the transmit side's state, which is always compiled in with
 the switch), placed by the caller. Flash: about 3.7 KB for the follower and the
 messages, 0.8 KB for the receive side's trunking units (the trellis decoder among them). Pure: time comes in as a
 millisecond tick on every call, retunes go out through `p25_follow_hooks_t.tune`. All calls come from one task (or
@@ -192,6 +192,12 @@ The view (`p25_follow_view`, a consistent copy for another task): state, the con
 WACN, system, RFSS, site, the call followed (group, source, target, encrypted), identifiers known, control channels
 learned, the last grant refused and why, and counters: blocks, CRC failures, manufacturer's blocks, packets, grants,
 follows, refusals by reason, wrong system, hunts, control channel losses, voice losses, and blocks by opcode.
+
+What the site sends: `view.op` counts the blocks of the standard's table by opcode, a protected block among them (it is
+not decoded, so a protected grant counts in `op` while `grants` stays 0). A manufacturer's block (an MFID other than
+`0x00` and `0x01`) is skipped, but `view.mfr_id`, `mfr_op` and `mfr_n` file the first three MFID and opcode pairs seen
+with their counts, so a site's own messages can be told from a grant the follower doesn't read. The debug link prints
+both ([debuglink.md](debuglink.md) 3.7).
 
 Bit error rate: for each block whose CRC holds (a TSDU's blocks, a packet's header), the follower adds the bits the
 trellis decoder corrected (`p25_block_get`'s return: received bits that disagree with the code word chosen) to
@@ -293,7 +299,7 @@ first one's flag, so the two are never inside together. The provider's task then
 Memory: the follower, its configuration and its control channel and identifier tables sit beside the engine in the
 memory the board places for P25 (the vocoder's, where it lends it); the system read from the codeplug shares the voice
 path's part, which it needs only until the voice path starts. The radio task keeps a copy of the follower's view for
-other tasks (about 160 bytes). The site panel adds 16 bytes to the radio view's `p25` part and the bit error rate's
+other tasks (about 170 bytes). The site panel adds 16 bytes to the radio view's `p25` part and the bit error rate's
 one-second state (18 bytes) to the radio core.
 
 The site panel: the radio core copies the follower's control channel and site into the radio view (`p25`: `cc_hz`

@@ -805,6 +805,60 @@ static void testFollowBer(void)
 	p25_follow_end(&f);
 }
 
+// What the view tells of the blocks the follower doesn't act on (p25-trunking.md 4): a manufacturer's block is filed
+// under its MFID and opcode (the first P25_MFR_KINDS pairs), a block of the standard's table is counted by opcode,
+// and a protected one too, while a grant it holds is not counted as a grant
+static void testFollowOpcodes(void)
+{
+	static const p25_follow_cc_t cc[] = { { .hz = HZ_CC1, .site = 3 } };
+	static p25_follow_t f;
+	static uint8_t air[P25_UNIT_BYTES_MAX];
+	p25_follow_cfg_t cfg = { .wacn = WACN, .sysid = SYSID, .nac = NAC, .unit_id = OUR_UNIT, .talk_group = 100,
+				 .ncc = 1, .cc = cc };
+	p25_rx_unit_t u = { .duid = P25_DUID_TSDU, .nac = NAC, .nsyms = 180, .air = air };
+	uint8_t b[P25_TSBK_BYTES];
+	p25_follow_view_t v;
+	// A block of opcode op under mfid, made by hand: the last block flag, the opcode, the MFID, a group's worth of
+	// arguments, the CRC
+	struct { uint8_t op, mfid; } blocks[] = {
+		{ 0x80 | 0x02, 0x90 }, { 0x80 | 0x02, 0x90 }, { 0x80 | 0x0A, 0x90 }, { 0x80 | 0x01, 0xA4 },
+		{ 0x80 | 0x07, 0x90 },	// a fourth pair: no slot left for it, still counted in mfr
+		{ 0x80 | 0x40 | 0x00, 0x00 },	// a protected group grant: the arguments are encrypted
+	};
+
+	ntunes = nfallback = 0;
+	now_ms = 1000;
+	p25_follow_begin(&f, &cfg, &fhooks, NULL, now_ms);
+	retune(&f);
+	mk_net(b, WACN, SYSID);
+	p25_unit_begin(air, 180, NAC, P25_DUID_TSDU, P25_SS_IDLE);
+	p25_block_put(air, 0, b);
+	p25_follow_unit(&f, &u, now_ms);
+	for (unsigned i = 0; i < sizeof blocks / sizeof blocks[0]; i++) {
+		memset(b, 0, sizeof b);
+		b[0] = blocks[i].op;
+		b[1] = blocks[i].mfid;
+		p25_tsbk_seal(b);
+		p25_unit_begin(air, 180, NAC, P25_DUID_TSDU, P25_SS_IDLE);
+		p25_block_put(air, 0, b);
+		p25_follow_unit(&f, &u, now_ms);
+	}
+	v = view(&f);
+	CHECK(v.mfr == 5 && v.crc_fail == 0, "manufacturer blocks: %u, CRC failures %u", v.mfr, v.crc_fail);
+	CHECK(v.mfr_id[0] == 0x90 && v.mfr_op[0] == 0x02 && v.mfr_n[0] == 2, "first pair %02x/%02x x%u", v.mfr_id[0],
+	      v.mfr_op[0], v.mfr_n[0]);
+	CHECK(v.mfr_id[1] == 0x90 && v.mfr_op[1] == 0x0A && v.mfr_n[1] == 1, "second pair %02x/%02x x%u", v.mfr_id[1],
+	      v.mfr_op[1], v.mfr_n[1]);
+	CHECK(v.mfr_id[2] == 0xA4 && v.mfr_op[2] == 0x01 && v.mfr_n[2] == 1, "third pair %02x/%02x x%u", v.mfr_id[2],
+	      v.mfr_op[2], v.mfr_n[2]);
+	// The pairs are for what the site sends, not for the standard's table: the network status and the protected
+	// grant are counted there, and the protected grant is no grant
+	CHECK(v.op[P25_OP_NET_STS_BCST] == 1 && v.op[P25_OP_GRP_V_GRANT] == 1 && v.grants == 0 && v.follows == 0,
+	      "op 3b x%u, op 00 x%u, grants %u", v.op[P25_OP_NET_STS_BCST], v.op[P25_OP_GRP_V_GRANT], v.grants);
+	CHECK(v.op[0x02] == 0, "a manufacturer's opcode 02 is not the standard's");
+	p25_follow_end(&f);
+}
+
 #define HZ_CC1_IN	(HZ_CC1 - 45000000u)
 #define HZ_VA_IN	(HZ_VA - 45000000u)
 
@@ -1810,6 +1864,7 @@ int main(void)
 	testChannels();
 	testFollowHand();
 	testFollowBer();
+	testFollowOpcodes();
 	testFollowOptions();
 	testAccess();
 	testAccessEarlyAnswers();

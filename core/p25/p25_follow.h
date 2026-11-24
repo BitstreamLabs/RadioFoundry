@@ -135,6 +135,8 @@ enum {
 // p25_follow_can_talk
 enum { P25_TALK_OK, P25_TALK_OFF, P25_TALK_NO_CC, P25_TALK_NOT_REG };
 
+#define P25_MFR_KINDS	3	// the manufacturer's (MFID, opcode) pairs the view tells apart
+
 typedef struct {
 	uint8_t state;		// P25_FOLLOW_*
 	uint8_t cc;		// the control channel tried or held: index into cfg.cc, then the learned ones; 0xFF none
@@ -167,6 +169,9 @@ typedef struct {
 	uint16_t aff_tg;	// the talk group affiliated, 0 none
 	uint32_t talk_hz;	// our voice channel's transmit frequency
 	uint8_t reg_tx, reg_ok, aff_tx, aff_ok, req_tx, req_grant, denials, queued, timeouts, send_fail, inb_busy;
+	// The manufacturer's blocks (the mfr count) by MFID and opcode: the first P25_MFR_KINDS pairs seen, each with
+	// its blocks (saturating at 255; 0 blocks: unused). Which of a site's messages the follower skips by design
+	uint8_t mfr_id[P25_MFR_KINDS], mfr_op[P25_MFR_KINDS], mfr_n[P25_MFR_KINDS];
 } p25_follow_view_t;
 
 typedef struct {
