@@ -96,8 +96,9 @@ __attribute__((noinline)) void debuglink_view_p25_trunk(dl_text_t *t)
 		(unsigned)f->src, (unsigned)f->dst, f->unit_call, f->enc);
 	dl_text(t, "p25t.idens=%u\np25t.learned=%u\np25t.refused=%u\np25t.refused_tg=%u\np25t.fallback=%u\n",
 		f->idens, f->learned, f->refused, f->refused_tg, f->fallback);
-	dl_text(t, "p25t.blocks=%u\np25t.crc_fail=%u\np25t.mfr=%u\np25t.mbt=%u\np25t.mbt_op=%u\np25t.pdu_other=%u\n",
-		(unsigned)f->blocks, (unsigned)f->crc_fail, f->mfr, f->mbt, f->mbt_op, f->pdu_other);
+	dl_text(t, "p25t.blocks=%u\np25t.crc_fail=%u\np25t.crc_taken=%u\np25t.unverified=%u\np25t.mfr=%u\np25t.mbt=%u\n"
+		"p25t.mbt_op=%u\np25t.pdu_other=%u\n", (unsigned)f->blocks, (unsigned)f->crc_fail, f->crc_taken, f->unverified,
+		f->mfr, f->mbt, f->mbt_op, f->pdu_other);
 	// The control channel's bit error rate: the bits corrected in blocks whose CRC held, their coded bits, and the
 	// last second's rate in 0.01 % (65535 not measured: off the control channel, or more blocks failed than held)
 	dl_text(t, "p25t.err_bits=%u\np25t.coded_bits=%u\np25t.ber=%u\n", (unsigned)f->err_bits,
